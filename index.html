@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>豆豆樂樂 · 智能任務檢查表 · 即時同步</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #fdf7f0;
+            font-family: 'Segoe UI', 'Quicksand', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            max-width: 1500px;
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        /* 同步狀態指示器 */
+        .sync-banner {
+            max-width: 1500px;
+            width: 100%;
+            background: #e8f5e9;
+            border-radius: 20px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            border: 2px solid #a5d6a7;
+            box-shadow: 0 4px 0 #81c784, 0 5px 12px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2e7d32;
+            flex-wrap: wrap;
+        }
+
+        .sync-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+            display: inline-block;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        .sync-dot.offline {
+            background: #f44336;
+            animation: none;
+        }
+
+        .sync-dot.syncing {
+            background: #ff9800;
+            animation: pulse 0.6s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .sync-info {
+            font-size: 0.8rem;
+            color: #558b55;
+            font-weight: 500;
+        }
+
+        .sync-btn {
+            background: #c8e6c9;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #2e7d32;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border: 1px solid #a5d6a7;
+            transition: 0.1s;
+        }
+
+        .sync-btn:hover { background: #a5d6a7; }
+        .sync-btn:active { transform: translateY(1px); }
+
+        /* 假期模式橫幅 */
+        .holiday-banner {
+            max-width: 1500px;
+            width: 100%;
+            background: #fff3e0;
+            border-radius: 24px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            border: 2px solid #ffcc80;
+            box-shadow: 0 5px 0 #e0b070, 0 6px 14px -4px rgba(90, 60, 30, 0.15);
+        }
+
+        .holiday-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #6b4d2e;
+            cursor: pointer;
+            user-select: none;
+            flex-wrap: wrap;
+        }
+
+        .holiday-label input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: #e68a2e;
+            cursor: pointer;
+            transform: scale(1.1);
+            flex-shrink: 0;
+        }
+
+        .holiday-status {
+            font-size: 0.85rem;
+            background: #ffe0b2;
+            padding: 5px 14px;
+            border-radius: 30px;
+            color: #7a4f1e;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .holiday-status.active {
+            background: #c8e6c9;
+            color: #1f4f1f;
+        }
+
+        .child-card {
+            flex: 1 1 560px;
+            background: #ffffffd9;
+            backdrop-filter: blur(8px);
+            border-radius: 32px;
+            padding: 20px 18px;
+            box-shadow: 0 16px 28px -8px rgba(90, 60, 30, 0.2), 0 4px 10px rgba(0, 0, 0, 0.04);
+            border: 2px solid #ffe3cc;
+            transition: all 0.2s;
+        }
+
+        .child-card.doudou { border-top: 6px solid #ffb882; }
+        .child-card.lele { border-top: 6px solid #a7c7e7; }
+
+        .child-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .child-name {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doudou .child-name { color: #b45f2b; }
+        .lele .child-name { color: #2c5f8a; }
+
+        .child-avatar { font-size: 2.4rem; }
+
+        .date-display {
+            font-size: 0.78rem;
+            color: #7a5a42;
+            background: #f5ede5;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .day-selector {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .day-selector button {
+            border: none;
+            background: #f2ebe5;
+            border-radius: 24px;
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #5e4b3a;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #cbb9aa;
+            transition: all 0.06s;
+            border: 1px solid #e2d5c9;
+            min-width: 34px;
+        }
+
+        .day-selector button.active {
+            background: #b48b6a;
+            color: white;
+            box-shadow: 0 1px 0 #6e4f36;
+            transform: translateY(1px);
+        }
+
+        .day-selector button:active {
+            transform: translateY(3px);
+            box-shadow: 0 0px 0 #cbb9aa;
+        }
+
+        .holiday-mode .day-selector button {
+            opacity: 0.5;
+        }
+        .holiday-mode .day-selector button.active {
+            opacity: 1;
+            background: #e68a2e;
+            box-shadow: 0 1px 0 #a05e1e;
+        }
+
+        .phone-allowance {
+            background: #fff2e4;
+            border-radius: 22px;
+            padding: 10px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ffd8b5;
+            font-weight: 600;
+            gap: 6px;
+        }
+
+        .allowance-badge {
+            font-size: 0.9rem;
+            padding: 5px 14px;
+            border-radius: 24px;
+            background: #f0e0d0;
+            color: #4f3827;
+            white-space: nowrap;
+        }
+
+        .allowance-badge.good { background: #cfe8cf; color: #1f4f1f; }
+        .allowance-badge.bad { background: #f8d7d7; color: #8b2e2e; }
+
+        .rule-note {
+            font-size: 0.82rem;
+            color: #9b7a62;
+            background: #fff6ef;
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            line-height: 1.4;
+        }
+
+        .task-grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+
+        .task-item {
+            background: #fffcf9;
+            border-radius: 20px;
+            padding: 14px 14px 10px 16px;
+            box-shadow: 0 5px 0 #e2d1c2, 0 7px 14px -6px rgba(90, 60, 30, 0.12);
+            border: 1px solid #f0e3d8;
+            transition: opacity 0.15s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .task-item.completed {
+            opacity: 0.65;
+            box-shadow: 0 2px 0 #cbb9aa, 0 3px 6px -4px rgba(0, 0, 0, 0.1);
+            background: #f5efe9;
+        }
+
+        .task-item.confiscated {
+            border: 2px solid #e68a8a;
+            background: #fff0f0;
+        }
+
+        .task-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .task-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #49372b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .task-title input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #b47c52;
+            cursor: pointer;
+            transform: scale(1.05);
+            flex-shrink: 0;
+        }
+
+        .counter-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #f7eee7;
+            padding: 3px 7px;
+            border-radius: 30px;
+            border: 1px solid #ebd9cb;
+            flex-shrink: 0;
+        }
+
+        .counter-badge button {
+            width: 26px;
+            height: 26px;
+            border-radius: 16px;
+            border: none;
+            background: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #6b4d38;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #cbb6a6;
+            transition: 0.07s;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            border: 1px solid #e6d3c4;
+            flex-shrink: 0;
+        }
+
+        .counter-badge button:active {
+            transform: translateY(2px);
+            box-shadow: 0 0px 0 #cbb6a6;
+        }
+
+        .counter-badge span {
+            font-size: 1.1rem;
+            font-weight: 700;
+            min-width: 26px;
+            text-align: center;
+            color: #3c2d20;
+        }
+
+        .detail-list {
+            list-style: none;
+            padding-left: 2px;
+            margin: 4px 0 6px;
+            font-size: 0.85rem;
+            color: #6a5543;
+            flex: 1;
+        }
+
+        .detail-list li {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: #f9f2eb;
+            padding: 4px 8px;
+            border-radius: 20px;
+            border: 1px solid #f1e2d6;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .detail-list li input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: #b47c52;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .detail-list li.completed-detail {
+            text-decoration: line-through;
+            opacity: 0.6;
+            background: #eee7e0;
+        }
+
+        .detail-list li.detail-disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            background: #f0e8e0;
+        }
+
+        .detail-list li.detail-disabled input[type="checkbox"] {
+            cursor: not-allowed;
+        }
+
+        .detail-text {
+            flex: 1;
+            outline: none;
+            border-bottom: 1px dashed transparent;
+            padding: 1px 2px;
+            min-width: 40px;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .detail-text:focus {
+            border-bottom-color: #b47c52;
+            background: #fff6ee;
+        }
+
+        .delete-detail-btn {
+            background: none;
+            border: none;
+            color: #c97a5a;
+            font-size: 0.95rem;
+            cursor: pointer;
+            padding: 0 3px;
+            opacity: 0.5;
+            transition: 0.15s;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .delete-detail-btn:hover { opacity: 1; transform: scale(1.2); }
+
+        .add-detail-btn {
+            background: #f0e4d8;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6a4d36;
+            cursor: pointer;
+            margin-top: 2px;
+            transition: 0.1s;
+            border: 1px dashed #d4b8a4;
+            width: 100%;
+        }
+
+        .add-detail-btn:hover { background: #e8d6c6; }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+            padding-top: 6px;
+            border-top: 1px dashed #ddcbbc;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #8b6d58;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .status-badge {
+            background: #e4d4c6;
+            padding: 2px 12px;
+            border-radius: 20px;
+            color: #4b3627;
+            font-weight: 700;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .status-badge.done { background: #b9d8b3; color: #2d4a27; }
+        .status-badge.confiscated { background: #f5c6c6; color: #8b2e2e; }
+
+        .phone-rule-box {
+            background: #f8f0e9;
+            border-radius: 20px;
+            padding: 10px 14px;
+            margin-top: 6px;
+            font-size: 0.85rem;
+            color: #5b4433;
+            border: 1px solid #eddccf;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .phone-rule-box .rule-text {
+            flex: 1;
+            min-width: 120px;
+            outline: none;
+            border-bottom: 1px dashed transparent;
+            padding: 2px 4px;
+            font-size: 0.85rem;
+            word-break: break-word;
+        }
+
+        .phone-rule-box .rule-text:focus {
+            border-bottom-color: #b47c52;
+            background: #fff6ee;
+        }
+
+        .penalty-note {
+            background: #fff0e0;
+            border-left: 5px solid #e68a2e;
+            padding: 8px 12px;
+            border-radius: 14px;
+            font-size: 0.82rem;
+            color: #7a4f28;
+            margin: 8px 0;
+            outline: none;
+            border-bottom: 1px dashed transparent;
+            line-height: 1.4;
+        }
+
+        .penalty-note:focus {
+            border-bottom-color: #b47c52;
+            background: #fff6ee;
+        }
+
+        .reset-child-btn {
+            background: #f2e2d5;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            color: #5a3e2b;
+            box-shadow: 0 4px 0 #b79b86;
+            cursor: pointer;
+            transition: 0.06s;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            width: 100%;
+            border: 1px solid #ecd9c9;
+            white-space: nowrap;
+        }
+
+        .reset-child-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #b79b86; }
+
+        .global-reset {
+            text-align: center;
+            margin-top: 16px;
+        }
+
+        .global-reset button {
+            background: #6b4f3a;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #3f2e20, 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: 0.08s;
+            white-space: nowrap;
+        }
+
+        .global-reset button:active { transform: translateY(4px); box-shadow: 0 2px 0 #3f2e20; }
+
+        /* 統計面板 */
+        .stats-panel {
+            margin-top: 24px;
+            background: #fffaf5;
+            border-radius: 28px;
+            padding: 18px 20px;
+            border: 2px solid #f0e0d0;
+            box-shadow: 0 8px 18px -8px rgba(0,0,0,0.1);
+            max-width: 1500px;
+            width: 100%;
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .stats-header h3 {
+            font-size: 1.4rem;
+            color: #4d3626;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-clear-btn {
+            background: #e8d6c8;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 24px;
+            font-weight: 600;
+            color: #4a3322;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #b79b86;
+            transition: 0.06s;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .stats-clear-btn:active { transform: translateY(2px); box-shadow: 0 0px 0 #b79b86; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .stats-child {
+            background: #fffdfa;
+            border-radius: 20px;
+            padding: 14px 16px;
+            border: 1px solid #f0e0d0;
+        }
+
+        .stats-child h4 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats-child.doudou h4 { color: #b45f2b; }
+        .stats-child.lele h4 { color: #2c5f8a; }
+
+        .realtime-stats {
+            background: #f3ece5;
+            border-radius: 14px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 0.82rem;
+            color: #4d3626;
+            line-height: 1.6;
+            border: 1px solid #e8d8ca;
+            word-break: break-word;
+        }
+
+        .realtime-stats .rt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1px 0;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .realtime-stats .rt-label { font-weight: 600; color: #7a5a42; }
+        .realtime-stats .rt-value { font-weight: 700; color: #3c2d20; }
+        .realtime-stats .rt-value.good { color: #2d6b2d; }
+        .realtime-stats .rt-value.bad { color: #b33a3a; }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.82rem;
+            border-radius: 14px;
+            background: #faf6f2;
+            padding: 4px;
+        }
+
+        .history-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            border-bottom: 1px solid #eddfd3;
+            flex-wrap: wrap;
+            gap: 4px;
+            color: #4b392b;
+        }
+
+        .history-entry:last-child { border-bottom: none; }
+
+        .history-date {
+            font-weight: 700;
+            color: #7a5a42;
+            min-width: 80px;
+            font-size: 0.8rem;
+        }
+
+        .history-detail {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 0.78rem;
+        }
+
+        .history-detail span {
+            background: #e9ddd2;
+            padding: 1px 8px;
+            border-radius: 16px;
+        }
+
+        .empty-history {
+            color: #a58b77;
+            text-align: center;
+            padding: 16px;
+            font-style: italic;
+        }
+
+        .stats-note {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: #8b6d58;
+            text-align: right;
+            background: #fff2e4;
+            padding: 5px 14px;
+            border-radius: 24px;
+            display: inline-block;
+        }
+
+        .add-task-btn {
+            background: #f0e4d8;
+            border: 2px dashed #cbb096;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-weight: 600;
+            color: #6a4d36;
+            cursor: pointer;
+            margin-top: 6px;
+            width: 100%;
+            font-size: 0.85rem;
+            transition: 0.1s;
+        }
+
+        .add-task-btn:hover { background: #e8d6c6; }
+
+        .delete-task-btn {
+            background: none;
+            border: none;
+            color: #c97a5a;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 4px;
+            opacity: 0.5;
+            transition: 0.15s;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .delete-task-btn:hover { opacity: 1; transform: scale(1.2); }
+
+        .task-title-text {
+            outline: none;
+            border-bottom: 1px dashed transparent;
+            padding: 1px 2px;
+            min-width: 40px;
+            word-break: break-word;
+        }
+
+        .task-title-text:focus {
+            border-bottom-color: #b47c52;
+            background: #fff6ee;
+        }
+
+        .task-hint {
+            font-size: 0.72rem;
+            color: #9b7a62;
+            background: #fdf4ec;
+            padding: 2px 8px;
+            border-radius: 16px;
+            margin-left: 2px;
+            border: 1px solid #f0e0d0;
+            white-space: nowrap;
+        }
+
+        .auto-note {
+            font-size: 0.72rem;
+            color: #9b7a62;
+            background: #f0e8e0;
+            padding: 3px 10px;
+            border-radius: 16px;
+            margin-top: 3px;
+            display: inline-block;
+        }
+
+        .confiscated-note {
+            background: #ffe0e0;
+            border: 1px solid #f5b5b5;
+            color: #8b2e2e;
+            padding: 5px 10px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        /* 手機響應式 */
+        @media (max-width: 750px) {
+            body { padding: 10px; }
+            .container { gap: 14px; }
+            .sync-banner { padding: 8px 12px; border-radius: 16px; }
+            .sync-status { font-size: 0.85rem; }
+            .sync-info { font-size: 0.72rem; }
+            .holiday-banner { padding: 10px 14px; border-radius: 20px; }
+            .holiday-label { font-size: 0.95rem; }
+            .holiday-status { font-size: 0.8rem; }
+            .child-card { flex: 1 1 100%; padding: 16px 12px; border-radius: 26px; }
+            .child-name { font-size: 1.6rem; }
+            .child-avatar { font-size: 2rem; }
+            .date-display { font-size: 0.72rem; padding: 3px 8px; }
+            .day-selector button { padding: 5px 10px; font-size: 0.82rem; min-width: 30px; }
+            .task-grid-2col { grid-template-columns: 1fr; gap: 10px; }
+            .task-item { padding: 12px 12px 8px 14px; border-radius: 18px; }
+            .task-title { font-size: 1rem; }
+            .task-title input[type="checkbox"] { width: 18px; height: 18px; }
+            .counter-badge button { width: 24px; height: 24px; font-size: 1rem; }
+            .counter-badge span { font-size: 1rem; min-width: 22px; }
+            .detail-list li { padding: 3px 7px; font-size: 0.8rem; }
+            .detail-text { font-size: 0.8rem; }
+            .status-badge { font-size: 0.75rem; padding: 2px 10px; }
+            .phone-allowance { padding: 8px 12px; border-radius: 18px; }
+            .allowance-badge { font-size: 0.82rem; padding: 4px 12px; }
+            .rule-note { font-size: 0.78rem; padding: 4px 10px; }
+            .phone-rule-box { padding: 8px 12px; border-radius: 16px; }
+            .phone-rule-box .rule-text { font-size: 0.8rem; }
+            .stats-panel { padding: 14px 12px; border-radius: 22px; margin-top: 16px; }
+            .stats-header h3 { font-size: 1.2rem; }
+            .stats-grid { grid-template-columns: 1fr; gap: 12px; }
+            .stats-child { padding: 12px 12px; border-radius: 16px; }
+            .realtime-stats { font-size: 0.78rem; padding: 6px 10px; }
+            .history-list { max-height: 180px; font-size: 0.78rem; }
+            .history-entry { padding: 5px 8px; }
+            .reset-child-btn { padding: 8px 16px; font-size: 0.8rem; border-radius: 24px; }
+            .global-reset button { padding: 12px 28px; font-size: 0.9rem; border-radius: 36px; }
+            .penalty-note { font-size: 0.78rem; padding: 6px 10px; }
+            .add-task-btn { padding: 7px 14px; font-size: 0.8rem; }
+            .auto-note { font-size: 0.7rem; padding: 2px 8px; }
+            .confiscated-note { font-size: 0.75rem; padding: 4px 8px; }
+        }
+
+        @media (max-width: 400px) {
+            body { padding: 6px; }
+            .child-card { padding: 12px 8px; }
+            .child-name { font-size: 1.4rem; }
+            .day-selector button { padding: 4px 8px; font-size: 0.75rem; min-width: 26px; }
+            .task-title { font-size: 0.92rem; }
+            .task-title input[type="checkbox"] { width: 16px; height: 16px; }
+            .counter-badge { padding: 2px 5px; }
+            .counter-badge button { width: 22px; height: 22px; font-size: 0.9rem; }
+            .counter-badge span { font-size: 0.9rem; min-width: 20px; }
+            .detail-text { font-size: 0.75rem; }
+            .detail-list li { font-size: 0.75rem; }
+            .stats-child h4 { font-size: 1rem; }
+            .history-date { min-width: 65px; font-size: 0.75rem; }
+            .history-detail { font-size: 0.72rem; }
+        }
+
+        @media (min-width: 1200px) {
+            .child-card { padding: 28px 26px; }
+            .child-name { font-size: 2.3rem; }
+            .child-avatar { font-size: 3rem; }
+            .task-title { font-size: 1.25rem; }
+            .detail-text { font-size: 0.9rem; }
+            .detail-list li { font-size: 0.9rem; padding: 5px 10px; }
+            .counter-badge button { width: 32px; height: 32px; font-size: 1.3rem; }
+            .counter-badge span { font-size: 1.3rem; min-width: 32px; }
+            .day-selector button { padding: 8px 16px; font-size: 1rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; animation: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="appContainer">
+    <!-- 同步狀態橫幅 -->
+    <div class="sync-banner">
+        <div class="sync-status">
+            <span class="sync-dot" id="syncDot"></span>
+            <span id="syncText">已連線 · 即時同步</span>
+        </div>
+        <span class="sync-info" id="syncInfo">最後更新：--</span>
+        <button class="sync-btn" id="syncNowBtn">🔄 立即同步</button>
+    </div>
+
+    <!-- 假期模式橫幅 -->
+    <div class="holiday-banner">
+        <label class="holiday-label">
+            <input type="checkbox" id="holidayModeCheckbox">
+            🏖️ 假期模式（星期一至五也按星期六或日標準）
+        </label>
+        <span class="holiday-status" id="holidayStatus">關閉</span>
+    </div>
+
+    <!-- 豆豆卡片 (女仔) -->
+    <div class="child-card doudou" id="doudouCard">
+        <div class="child-header">
+            <div class="child-name">
+                <span class="child-avatar">👧</span> 豆豆
+            </div>
+            <div class="date-display" id="doudouDateDisplay"></div>
+            <div class="day-selector" id="doudouDaySelector">
+                <button data-day="1">一</button>
+                <button data-day="2">二</button>
+                <button data-day="3">三</button>
+                <button data-day="4">四</button>
+                <button data-day="5">五</button>
+                <button data-day="6">六</button>
+                <button data-day="0">日</button>
+            </div>
+        </div>
+
+        <div class="phone-allowance" id="doudouAllowance">
+            <span class="allowance-badge" id="doudouPhoneBadge">📱 手機使用狀態</span>
+            <span class="rule-note" id="doudouPhoneRule">載入中…</span>
+        </div>
+
+        <div class="penalty-note" id="doudouPenaltyNote" contenteditable="true">
+            ⚠️ 超過10:30睡 → 下週放學後交手機，9點才可用來做功課
+        </div>
+
+        <div class="task-grid-2col" id="doudouTasksContainer">
+            <!-- 任務由JS動態生成 -->
+        </div>
+
+        <div class="phone-rule-box">
+            <span class="rule-text" id="doudouDynamicRule" contenteditable="true">📌 手機使用細則</span>
+            <button class="reset-child-btn" data-child="doudou">🔄 重置豆豆</button>
+        </div>
+    </div>
+
+    <!-- 樂樂卡片 (男仔) -->
+    <div class="child-card lele" id="leleCard">
+        <div class="child-header">
+            <div class="child-name">
+                <span class="child-avatar">👦</span> 樂樂
+            </div>
+            <div class="date-display" id="leleDateDisplay"></div>
+            <div class="day-selector" id="leleDaySelector">
+                <button data-day="1">一</button>
+                <button data-day="2">二</button>
+                <button data-day="3">三</button>
+                <button data-day="4">四</button>
+                <button data-day="5">五</button>
+                <button data-day="6">六</button>
+                <button data-day="0">日</button>
+            </div>
+        </div>
+
+        <div class="phone-allowance" id="leleAllowance">
+            <span class="allowance-badge" id="lelePhoneBadge">📱 手機使用狀態</span>
+            <span class="rule-note" id="lelePhoneRule">載入中…</span>
+        </div>
+
+        <div class="penalty-note" id="lelePenaltyNote" contenteditable="true">
+            ⚠️ 樂樂無懲罰規則；<strong>做功課時不能使用手機</strong>
+        </div>
+
+        <div class="task-grid-2col" id="leleTasksContainer">
+            <!-- 任務由JS動態生成 -->
+        </div>
+
+        <div class="phone-rule-box">
+            <span class="rule-text" id="leleDynamicRule" contenteditable="true">📌 手機使用細則</span>
+            <button class="reset-child-btn" data-child="lele">🔄 重置樂樂</button>
+        </div>
+    </div>
+
+    <div class="global-reset">
+        <button id="globalResetBtn">🔄 重置全部</button>
+    </div>
+
+    <!-- 統計歷史面板 -->
+    <div class="stats-panel" id="statsPanel">
+        <div class="stats-header">
+            <h3>📊 統計記錄</h3>
+            <button class="stats-clear-btn" id="clearStatsBtn">清除全部記錄</button>
+        </div>
+        <div class="stats-grid">
+            <div class="stats-child doudou">
+                <h4>👧 豆豆</h4>
+                <div class="realtime-stats" id="doudouRealtimeStats"></div>
+                <div class="history-list" id="doudouHistory">
+                    <div class="empty-history">暫無記錄</div>
+                </div>
+            </div>
+            <div class="stats-child lele">
+                <h4>👦 樂樂</h4>
+                <div class="realtime-stats" id="leleRealtimeStats"></div>
+                <div class="history-list" id="leleHistory">
+                    <div class="empty-history">暫無記錄</div>
+                </div>
+            </div>
+        </div>
+        <div class="stats-note">
+            ⏰ 每晚凌晨 00:00 自動儲存 · 所有修改即時同步到所有裝置
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ============================================================
+        // 即時同步機制
+        // ============================================================
+        // 使用 localStorage 的 'storage' 事件監聽來實現跨分頁/視窗同步。
+        // 同一瀏覽器內不同分頁、不同視窗開啟同一頁面時，
+        // 任何一方的修改都會觸發其他頁面的 storage 事件，從而即時更新。
+        // 同時我們也定時（每秒）檢查 localStorage 是否有變化，作為備份。
+        // ============================================================
+
+        const STORAGE_KEY = 'doudouLeleChecklistData_sync_v1';
+        const HISTORY_KEY = 'doudouLeleHistory_sync_v1';
+        const META_KEY = 'doudouLeleMeta_sync_v1'; // 記錄最後更新時間戳
+
+        // 同步狀態
+        let lastLocalTimestamp = 0;
+        let syncTimer = null;
+        let isSyncing = false;
+
+        // ---------- 預設任務 ----------
+        const DEFAULT_TASKS = {
+            doudou: [
+                {
+                    id: 'homework',
+                    name: '📚 功課',
+                    details: [
+                        { id: 'hw1', text: '完成所有書寫' },
+                        { id: 'hw2', text: '檢查改正' },
+                        { id: 'hw3', text: '收拾書桌及書包' }
+                    ]
+                },
+                {
+                    id: 'chores',
+                    name: '🧹 家務',
+                    details: [
+                        { id: 'ch1', text: '整理房間' },
+                        { id: 'ch2', text: '幫忙洗碗/垃圾' },
+                        { id: 'ch3', text: '摺衣服' }
+                    ]
+                },
+                {
+                    id: 'revision',
+                    name: '📖 溫習',
+                    details: [
+                        { id: 'rv1', text: '按讀書計劃溫習' },
+                        { id: 'rv_weekend', text: '📅 每科讀20分鐘(僅週末)' },
+                        { id: 'rv3', text: '整理筆記/練習' }
+                    ]
+                },
+                {
+                    id: 'phone',
+                    name: '📱 手機時間',
+                    details: [
+                        { id: 'ph_confiscated', text: '🚫 有被沒收手機 (前提)' },
+                        { id: 'ph1', text: '每30分停10分' },
+                        { id: 'ph2', text: '完成條件才玩' }
+                    ]
+                }
+            ],
+            lele: [
+                {
+                    id: 'homework',
+                    name: '📚 功課',
+                    details: [
+                        { id: 'hw1', text: '完成所有書寫' },
+                        { id: 'hw2', text: '檢查改正' },
+                        { id: 'hw3', text: '收拾書桌及書包' },
+                        { id: 'hw4', text: '🚫 做功課時不用手機' }
+                    ]
+                },
+                {
+                    id: 'chores',
+                    name: '🧹 家務',
+                    details: [
+                        { id: 'ch1', text: '整理房間' },
+                        { id: 'ch2', text: '幫忙洗碗/垃圾' },
+                        { id: 'ch3', text: '摺衣服' }
+                    ]
+                },
+                {
+                    id: 'revision',
+                    name: '📖 溫習',
+                    details: [
+                        { id: 'rv1', text: '按讀書計劃溫習' },
+                        { id: 'rv_weekend', text: '📅 每科讀20分鐘(僅週末)' },
+                        { id: 'rv3', text: '整理筆記/練習' }
+                    ]
+                },
+                {
+                    id: 'phone',
+                    name: '📱 手機時間',
+                    details: [
+                        { id: 'ph_confiscated', text: '🚫 有被沒收手機 (前提)' },
+                        { id: 'ph1', text: '每20分停10分' },
+                        { id: 'ph2', text: '完成條件才玩' }
+                    ]
+                }
+            ]
+        };
+
+        const DEFAULT_UI_TEXT = {
+            doudou: {
+                penaltyNote: '⚠️ 超過10:30睡 → 下週放學後交手機，9點才可用來做功課',
+                dynamicRule: '📌 手機使用細則'
+            },
+            lele: {
+                penaltyNote: '⚠️ 樂樂無懲罰規則；做功課時不能使用手機',
+                dynamicRule: '📌 手機使用細則'
+            }
+        };
+
+        const CONFISCATED_DETAIL_ID = 'ph_confiscated';
+        const WEEKEND_REVISION_ID = 'rv_weekend';
+
+        // ---------- 工具 ----------
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function getTodayDay() {
+            return new Date().getDay();
+        }
+
+        function formatDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatDisplayDate(date) {
+            const dayNames = ['日', '一', '二', '三', '四', '五', '六'];
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}年${m}月${d}日 (星期${dayNames[date.getDay()]})`;
+        }
+
+        function isCalendarWeekend(day) {
+            return day === 6 || day === 0;
+        }
+
+        function isWeekendStandard(day, holidayMode) {
+            return holidayMode || isCalendarWeekend(day);
+        }
+
+        // ---------- 狀態 ----------
+        let state = {
+            doudou: {
+                currentDay: getTodayDay(),
+                tasks: [],
+                counters: {},
+                mainChecked: {},
+                detailChecked: {},
+                uiText: { ...DEFAULT_UI_TEXT.doudou },
+                lastAutoDate: null
+            },
+            lele: {
+                currentDay: getTodayDay(),
+                tasks: [],
+                counters: {},
+                mainChecked: {},
+                detailChecked: {},
+                uiText: { ...DEFAULT_UI_TEXT.lele },
+                lastAutoDate: null
+            }
+        };
+
+        let globalHolidayMode = false;
+        let historyData = { doudou: [], lele: [] };
+
+        // ---------- 同步核心 ----------
+        function updateSyncStatus(status, info) {
+            const dot = document.getElementById('syncDot');
+            const text = document.getElementById('syncText');
+            const infoEl = document.getElementById('syncInfo');
+            if (!dot || !text) return;
+            dot.className = 'sync-dot';
+            if (status === 'offline') {
+                dot.classList.add('offline');
+                text.textContent = '離線 · 使用本機資料';
+            } else if (status === 'syncing') {
+                dot.classList.add('syncing');
+                text.textContent = '同步中…';
+            } else {
+                text.textContent = '已連線 · 即時同步';
+            }
+            if (infoEl && info) {
+                infoEl.textContent = info;
+            }
+        }
+
+        function getMeta() {
+            try {
+                const raw = localStorage.getItem(META_KEY);
+                return raw ? JSON.parse(raw) : { timestamp: 0, source: 'unknown' };
+            } catch (e) {
+                return { timestamp: 0, source: 'unknown' };
+            }
+        }
+
+        function setMeta(timestamp) {
+            try {
+                localStorage.setItem(META_KEY, JSON.stringify({
+                    timestamp: timestamp || Date.now(),
+                    source: 'page_' + Math.random().toString(36).substr(2, 9)
+                }));
+            } catch (e) {}
+        }
+
+        // 從 localStorage 讀取最新狀態並更新本機
+        function pullFromStorage() {
+            try {
+                // 檢查 meta 時間戳
+                const meta = getMeta();
+                if (meta.timestamp <= lastLocalTimestamp) {
+                    return false; // 沒有更新
+                }
+
+                const raw = localStorage.getItem(STORAGE_KEY);
+                const histRaw = localStorage.getItem(HISTORY_KEY);
+
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.globalHolidayMode !== undefined) {
+                        globalHolidayMode = parsed.globalHolidayMode;
+                    }
+                    ['doudou', 'lele'].forEach(child => {
+                        if (parsed[child]) {
+                            state[child].currentDay = parsed[child].currentDay ?? getTodayDay();
+                            state[child].lastAutoDate = parsed[child].lastAutoDate ?? null;
+                            state[child].tasks = parsed[child].tasks || JSON.parse(JSON.stringify(DEFAULT_TASKS[child]));
+                            state[child].counters = parsed[child].counters || {};
+                            state[child].mainChecked = parsed[child].mainChecked || {};
+                            state[child].detailChecked = parsed[child].detailChecked || {};
+                            state[child].uiText = parsed[child].uiText || { ...DEFAULT_UI_TEXT[child] };
+                        }
+                    });
+                    // 確保固定細項
+                    ['doudou', 'lele'].forEach(child => {
+                        const phoneTask = state[child].tasks.find(t => t.id === 'phone');
+                        if (phoneTask && !phoneTask.details.some(d => d.id === CONFISCATED_DETAIL_ID)) {
+                            phoneTask.details.unshift({ id: CONFISCATED_DETAIL_ID, text: '🚫 有被沒收手機 (前提)' });
+                        }
+                        const revTask = state[child].tasks.find(t => t.id === 'revision');
+                        if (revTask && !revTask.details.some(d => d.id === WEEKEND_REVISION_ID)) {
+                            revTask.details.splice(1, 0, { id: WEEKEND_REVISION_ID, text: '📅 每科讀20分鐘(僅週末)' });
+                        }
+                    });
+                }
+
+                if (histRaw) {
+                    historyData = JSON.parse(histRaw);
+                }
+
+                lastLocalTimestamp = meta.timestamp;
+                updateSyncStatus('online', '最後更新：' + new Date(meta.timestamp).toLocaleTimeString());
+                return true;
+            } catch (e) {
+                console.warn('同步讀取失敗', e);
+                return false;
+            }
+        }
+
+        // 將本機狀態寫入 localStorage
+        function pushToStorage() {
+            try {
+                const toSave = {
+                    globalHolidayMode: globalHolidayMode,
+                    doudou: state.doudou,
+                    lele: state.lele
+                };
+                const now = Date.now();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(historyData));
+                setMeta(now);
+                lastLocalTimestamp = now;
+                updateSyncStatus('online', '最後更新：' + new Date(now).toLocaleTimeString());
+            } catch (e) {
+                console.warn('同步寫入失敗', e);
+                updateSyncStatus('offline', '離線 · 儲存失敗');
+            }
+        }
+
+        // 同步並重繪所有 UI
+        function syncAndRender() {
+            if (isSyncing) return;
+            isSyncing = true;
+            updateSyncStatus('syncing', '同步中…');
+            const changed = pullFromStorage();
+            if (changed) {
+                applyAllToUI();
+            }
+            // 短暫延遲後恢復狀態
+            setTimeout(() => {
+                isSyncing = false;
+                updateSyncStatus('online', '最後更新：' + new Date(lastLocalTimestamp).toLocaleTimeString());
+            }, 200);
+        }
+
+        // 將狀態套用到所有 UI（不重新讀取，直接使用目前的 state）
+        function applyAllToUI() {
+            // 更新假期模式
+            const holidayCheckbox = document.getElementById('holidayModeCheckbox');
+            if (holidayCheckbox) holidayCheckbox.checked = globalHolidayMode;
+            const holidayStatus = document.getElementById('holidayStatus');
+            if (holidayStatus) {
+                holidayStatus.textContent = globalHolidayMode ? '已開啟' : '關閉';
+                holidayStatus.className = globalHolidayMode ? 'holiday-status active' : 'holiday-status';
+            }
+
+            // 重新計算計數器（以細項為準）
+            ['doudou', 'lele'].forEach(child => {
+                recalcCountersFromDetails(child);
+                const s = state[child];
+                const req = getRequirements(child, s.currentDay);
+                s.tasks.forEach(task => {
+                    if (req[task.id] > 0) {
+                        s.mainChecked[task.id] = (s.counters[task.id] || 0) >= req[task.id];
+                    }
+                });
+                if (isPhoneConfiscated(child)) {
+                    s.mainChecked['phone'] = false;
+                }
+            });
+
+            renderTasks('doudou');
+            renderTasks('lele');
+            updateChildUI('doudou');
+            updateChildUI('lele');
+            renderHistory();
+        }
+
+        // 監聽 storage 事件（跨分頁即時同步）
+        window.addEventListener('storage', function(e) {
+            if (e.key === STORAGE_KEY || e.key === HISTORY_KEY || e.key === META_KEY) {
+                // 避免自己觸發自己的事件（但 storage 事件本來就不會觸發自己）
+                syncAndRender();
+            }
+        });
+
+        // 定時檢查（每 1.5 秒），作為備份
+        function startSyncTimer() {
+            if (syncTimer) clearInterval(syncTimer);
+            syncTimer = setInterval(() => {
+                const meta = getMeta();
+                if (meta.timestamp > lastLocalTimestamp) {
+                    syncAndRender();
+                }
+            }, 1500);
+        }
+
+        // ---------- 載入初始資料 ----------
+        function loadInitial() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                const histRaw = localStorage.getItem(HISTORY_KEY);
+                const meta = getMeta();
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.globalHolidayMode !== undefined) {
+                        globalHolidayMode = parsed.globalHolidayMode;
+                    }
+                    ['doudou', 'lele'].forEach(child => {
+                        if (parsed[child]) {
+                            state[child].currentDay = parsed[child].currentDay ?? getTodayDay();
+                            state[child].lastAutoDate = parsed[child].lastAutoDate ?? null;
+                            state[child].tasks = parsed[child].tasks || JSON.parse(JSON.stringify(DEFAULT_TASKS[child]));
+                            state[child].counters = parsed[child].counters || {};
+                            state[child].mainChecked = parsed[child].mainChecked || {};
+                            state[child].detailChecked = parsed[child].detailChecked || {};
+                            state[child].uiText = parsed[child].uiText || { ...DEFAULT_UI_TEXT[child] };
+                        } else {
+                            initDefaultState(child);
+                        }
+                    });
+                    ['doudou', 'lele'].forEach(child => {
+                        const phoneTask = state[child].tasks.find(t => t.id === 'phone');
+                        if (phoneTask && !phoneTask.details.some(d => d.id === CONFISCATED_DETAIL_ID)) {
+                            phoneTask.details.unshift({ id: CONFISCATED_DETAIL_ID, text: '🚫 有被沒收手機 (前提)' });
+                        }
+                        const revTask = state[child].tasks.find(t => t.id === 'revision');
+                        if (revTask && !revTask.details.some(d => d.id === WEEKEND_REVISION_ID)) {
+                            revTask.details.splice(1, 0, { id: WEEKEND_REVISION_ID, text: '📅 每科讀20分鐘(僅週末)' });
+                        }
+                        state[child].tasks.forEach(task => {
+                            if (state[child].counters[task.id] === undefined) state[child].counters[task.id] = 0;
+                            if (state[child].mainChecked[task.id] === undefined) state[child].mainChecked[task.id] = false;
+                            if (!state[child].detailChecked[task.id]) state[child].detailChecked[task.id] = {};
+                            task.details.forEach(d => {
+                                if (state[child].detailChecked[task.id][d.id] === undefined) {
+                                    state[child].detailChecked[task.id][d.id] = false;
+                                }
+                            });
+                        });
+                    });
+                    lastLocalTimestamp = meta.timestamp || 0;
+                } else {
+                    ['doudou', 'lele'].forEach(child => initDefaultState(child));
+                    // 寫入初始資料
+                    pushToStorage();
+                }
+
+                if (histRaw) {
+                    historyData = JSON.parse(histRaw);
+                } else {
+                    historyData = { doudou: [], lele: [] };
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(historyData));
+                }
+
+                updateSyncStatus('online', '最後更新：' + (meta.timestamp ? new Date(meta.timestamp).toLocaleTimeString() : '首次載入'));
+            } catch (e) {
+                console.warn('初始載入失敗', e);
+                ['doudou', 'lele'].forEach(child => initDefaultState(child));
+                updateSyncStatus('offline', '使用本機預設值');
+            }
+        }
+
+        function initDefaultState(child) {
+            state[child].currentDay = getTodayDay();
+            state[child].lastAutoDate = null;
+            state[child].tasks = JSON.parse(JSON.stringify(DEFAULT_TASKS[child]));
+            state[child].counters = {};
+            state[child].mainChecked = {};
+            state[child].detailChecked = {};
+            state[child].uiText = { ...DEFAULT_UI_TEXT[child] };
+            state[child].tasks.forEach(task => {
+                state[child].counters[task.id] = 0;
+                state[child].mainChecked[task.id] = false;
+                state[child].detailChecked[task.id] = {};
+                task.details.forEach(d => {
+                    state[child].detailChecked[task.id][d.id] = false;
+                });
+            });
+        }
+
+        // ---------- 需求 ----------
+        function getRequirements(child, day) {
+            const useWeekend = isWeekendStandard(day, globalHolidayMode);
+            const base = { homework: 1, chores: useWeekend ? 3 : 1, revision: useWeekend ? 3 : 1, phone: 1 };
+            const s = state[child];
+            const req = {};
+            s.tasks.forEach(task => {
+                if (task.id in base) {
+                    req[task.id] = base[task.id];
+                } else {
+                    req[task.id] = 1;
+                }
+            });
+            return req;
+        }
+
+        function recalcCountersFromDetails(child) {
+            const s = state[child];
+            const useWeekend = isWeekendStandard(s.currentDay, globalHolidayMode);
+            s.tasks.forEach(task => {
+                let checkedCount = 0;
+                task.details.forEach(d => {
+                    if (d.id === CONFISCATED_DETAIL_ID) return;
+                    if (d.id === WEEKEND_REVISION_ID && !useWeekend) return;
+                    if (s.detailChecked[task.id] && s.detailChecked[task.id][d.id]) {
+                        checkedCount++;
+                    }
+                });
+                s.counters[task.id] = checkedCount;
+            });
+        }
+
+        function isPhoneConfiscated(child) {
+            const s = state[child];
+            return !!(s.detailChecked['phone'] && s.detailChecked['phone'][CONFISCATED_DETAIL_ID]);
+        }
+
+        // ---------- 渲染 ----------
+        function renderTasks(child) {
+            const s = state[child];
+            const container = document.getElementById(`${child}TasksContainer`);
+            if (!container) return;
+
+            const useWeekend = isWeekendStandard(s.currentDay, globalHolidayMode);
+            container.classList.toggle('is-weekend', useWeekend);
+
+            const addBtnHTML = `<button class="add-task-btn" data-child="${child}">＋ 新增任務</button>`;
+
+            container.innerHTML = s.tasks.map(task => {
+                const taskId = task.id;
+                const isPhoneTask = (taskId === 'phone');
+                const confiscated = isPhoneTask && isPhoneConfiscated(child);
+
+                const visibleDetails = task.details.filter(d => {
+                    if (d.id === WEEKEND_REVISION_ID && !useWeekend) return false;
+                    return true;
+                });
+
+                const detailsHTML = visibleDetails.map(d => {
+                    const isConfiscatedDetail = (d.id === CONFISCATED_DETAIL_ID);
+                    const checked = !!(s.detailChecked[taskId] && s.detailChecked[taskId][d.id]);
+                    const disabled = (isPhoneTask && !isConfiscatedDetail && confiscated);
+                    return `
+                    <li data-detail-id="${d.id}" data-task-id="${taskId}" data-child="${child}" class="${checked ? 'completed-detail' : ''} ${disabled ? 'detail-disabled' : ''}">
+                        <input type="checkbox" class="detail-checkbox" data-detail-id="${d.id}" data-task-id="${taskId}" data-child="${child}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+                        <span class="detail-text" contenteditable="true" data-detail-id="${d.id}" data-task-id="${taskId}" data-child="${child}">${d.text}</span>
+                        <button class="delete-detail-btn" data-detail-id="${d.id}" data-task-id="${taskId}" data-child="${child}">✕</button>
+                    </li>
+                    `;
+                }).join('');
+
+                let taskHint = '';
+                if (taskId === 'chores') {
+                    taskHint = useWeekend ? '<span class="task-hint">週末/假期需完成3項</span>' : '<span class="task-hint">平日需完成1項</span>';
+                } else if (taskId === 'revision') {
+                    taskHint = useWeekend ? '<span class="task-hint">週末/假期每科20分鐘</span>' : '<span class="task-hint">按考試前讀書計劃</span>';
+                }
+
+                const confiscatedNote = confiscated ? `<div class="confiscated-note">🚫 手機已被沒收，其他細項無法勾選</div>` : '';
+
+                const statusClass = confiscated ? 'status-badge confiscated' : (s.mainChecked[taskId] ? 'status-badge done' : 'status-badge');
+                const statusText = confiscated ? '已沒收' : (s.mainChecked[taskId] ? '完成' : '未完成');
+
+                return `
+                <div class="task-item ${s.mainChecked[taskId] && !confiscated ? 'completed' : ''} ${confiscated ? 'confiscated' : ''}" data-task-id="${taskId}" data-child="${child}">
+                    <div class="task-title-row">
+                        <div class="task-title">
+                            <input type="checkbox" class="main-checkbox" data-task-id="${taskId}" data-child="${child}" ${s.mainChecked[taskId] ? 'checked' : ''} ${confiscated ? 'disabled' : ''}>
+                            <span class="task-title-text" contenteditable="true" data-task-id="${taskId}" data-child="${child}">${task.name}</span>
+                            <button class="delete-task-btn" data-task-id="${taskId}" data-child="${child}">✕</button>
+                        </div>
+                        <div class="counter-badge">
+                            <button class="counter-btn" data-child="${child}" data-task="${taskId}" data-action="dec" ${confiscated ? 'disabled' : ''}>−</button>
+                            <span id="${child}${capitalize(taskId)}Counter">${s.counters[taskId] || 0}</span>
+                            <button class="counter-btn" data-child="${child}" data-task="${taskId}" data-action="inc" ${confiscated ? 'disabled' : ''}>+</button>
+                        </div>
+                    </div>
+                    ${taskHint ? `<div style="font-size:0.75rem;margin-bottom:3px;">${taskHint}</div>` : ''}
+                    ${confiscatedNote}
+                    <ul class="detail-list" id="${child}${capitalize(taskId)}Details">
+                        ${detailsHTML}
+                    </ul>
+                    <button class="add-detail-btn" data-task-id="${taskId}" data-child="${child}">＋ 新增細項</button>
+                    <div class="status-row">
+                        <span>📌 需完成</span>
+                        <span class="${statusClass}" id="${child}${capitalize(taskId)}Status">${statusText} ${s.counters[taskId] || 0}/${getRequirements(child, s.currentDay)[taskId] || 1}</span>
+                    </div>
+                    <div class="auto-note">✅ 細項打勾自動計算</div>
+                </div>
+                `;
+            }).join('') + addBtnHTML;
+
+            bindTaskEvents(child);
+        }
+
+        function updateChildUI(child) {
+            const s = state[child];
+            const day = s.currentDay;
+            const req = getRequirements(child, day);
+            const useWeekend = isWeekendStandard(day, globalHolidayMode);
+            const confiscated = isPhoneConfiscated(child);
+
+            const dateEl = document.getElementById(`${child}DateDisplay`);
+            if (dateEl) {
+                dateEl.textContent = formatDisplayDate(new Date());
+            }
+
+            document.querySelectorAll(`#${child}DaySelector button`).forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.day) === day);
+            });
+
+            const card = document.querySelector(`.child-card.${child}`);
+            if (card) {
+                card.classList.toggle('holiday-mode', globalHolidayMode);
+            }
+
+            s.tasks.forEach(task => {
+                const taskId = task.id;
+                const isPhoneTask = (taskId === 'phone');
+                const isConfiscated = isPhoneTask && confiscated;
+
+                const counterEl = document.getElementById(`${child}${capitalize(taskId)}Counter`);
+                if (counterEl) counterEl.textContent = s.counters[taskId] || 0;
+
+                const mainEl = document.querySelector(`.main-checkbox[data-task-id="${taskId}"][data-child="${child}"]`);
+                if (mainEl) {
+                    mainEl.checked = !!s.mainChecked[taskId];
+                    mainEl.disabled = isConfiscated;
+                }
+
+                const statusEl = document.getElementById(`${child}${capitalize(taskId)}Status`);
+                if (statusEl) {
+                    const need = req[taskId] || 1;
+                    if (isConfiscated) {
+                        statusEl.textContent = '已沒收';
+                        statusEl.className = 'status-badge confiscated';
+                    } else {
+                        statusEl.textContent = `${s.counters[taskId] || 0}/${need} ${s.mainChecked[taskId] ? '完成' : '未完成'}`;
+                        statusEl.className = s.mainChecked[taskId] ? 'status-badge done' : 'status-badge';
+                    }
+                }
+
+                const cardItem = document.querySelector(`.task-item[data-task-id="${taskId}"][data-child="${child}"]`);
+                if (cardItem) {
+                    cardItem.classList.toggle('completed', !!s.mainChecked[taskId] && !isConfiscated);
+                    cardItem.classList.toggle('confiscated', isConfiscated);
+                }
+
+                task.details.forEach(d => {
+                    if (d.id === WEEKEND_REVISION_ID && !useWeekend) return;
+                    const cb = document.querySelector(`.detail-checkbox[data-detail-id="${d.id}"][data-task-id="${taskId}"][data-child="${child}"]`);
+                    if (cb) {
+                        cb.checked = !!(s.detailChecked[taskId] && s.detailChecked[taskId][d.id]);
+                        const isConfiscatedDetail = (d.id === CONFISCATED_DETAIL_ID);
+                        const disabled = (isPhoneTask && !isConfiscatedDetail && isConfiscated);
+                        cb.disabled = disabled;
+                        const li = cb.closest('li');
+                        if (li) {
+                            li.classList.toggle('completed-detail', cb.checked);
+                            li.classList.toggle('detail-disabled', disabled);
+                        }
+                    }
+                });
+
+                const counterBtns = document.querySelectorAll(`.counter-btn[data-task="${taskId}"][data-child="${child}"]`);
+                counterBtns.forEach(btn => {
+                    btn.disabled = isConfiscated;
+                });
+            });
+
+            const hwDone = s.mainChecked['homework'] || false;
+            const choresDone = s.mainChecked['chores'] || false;
+            const revisionDone = s.mainChecked['revision'] || false;
+
+            let canUsePhone = false;
+            let phoneRuleText = '';
+            let dynamicText = '';
+
+            if (confiscated) {
+                canUsePhone = false;
+                phoneRuleText = '🚫 手機已被沒收，今日不可使用';
+                dynamicText = '📱 手機已被沒收，無法使用';
+            } else if (child === 'doudou') {
+                if (!useWeekend) {
+                    canUsePhone = hwDone && choresDone;
+                    phoneRuleText = canUsePhone ?
+                        '✅ 可玩手機至10:00 (每30分停10分)' :
+                        '❌ 需9:30前完成功課+家務才可玩手機至10:00';
+                    dynamicText = canUsePhone ?
+                        '📱 手機解鎖：10:00前，每30分鐘停10分鐘' :
+                        '⛔ 未完成功課/家務，手機不可用';
+                } else {
+                    canUsePhone = hwDone && revisionDone;
+                    phoneRuleText = canUsePhone ?
+                        '✅ 可玩手機 (每30分停10分)' :
+                        '❌ 需完成功課及溫習才可玩手機';
+                    dynamicText = canUsePhone ?
+                        '📱 手機解鎖：每30分鐘停10分鐘' :
+                        '⛔ 未完成功課/溫習，手機不可用';
+                }
+            } else {
+                if (!useWeekend) {
+                    canUsePhone = hwDone && choresDone;
+                    phoneRuleText = canUsePhone ?
+                        '✅ 可玩手機至9:30 (每20分停10分，做功課時不可用手機)' :
+                        '❌ 需9:00前完成功課+家務才可玩手機至9:30 (做功課時不可用手機)';
+                    dynamicText = canUsePhone ?
+                        '📱 手機解鎖：9:30前，每20分鐘停10分鐘；做功課時禁用' :
+                        '⛔ 未完成功課/家務，手機不可用；做功課時禁用';
+                } else {
+                    canUsePhone = hwDone && revisionDone;
+                    phoneRuleText = canUsePhone ?
+                        '✅ 可玩手機 (每20分停10分，做功課時不可用手機)' :
+                        '❌ 需完成功課及溫習才可玩手機 (做功課時不可用手機)';
+                    dynamicText = canUsePhone ?
+                        '📱 手機解鎖：每20分鐘停10分鐘；做功課時禁用' :
+                        '⛔ 未完成功課/溫習，手機不可用；做功課時禁用';
+                }
+            }
+
+            const phoneBadge = document.getElementById(`${child}PhoneBadge`);
+            if (phoneBadge) {
+                phoneBadge.className = canUsePhone ? 'allowance-badge good' : 'allowance-badge bad';
+                phoneBadge.textContent = canUsePhone ? '📱 手機可用' : (confiscated ? '📱 手機已沒收' : '📱 手機不可用');
+            }
+            const phoneRule = document.getElementById(`${child}PhoneRule`);
+            if (phoneRule) phoneRule.textContent = phoneRuleText;
+
+            const penaltyEl = document.getElementById(`${child}PenaltyNote`);
+            if (penaltyEl && penaltyEl.textContent !== s.uiText.penaltyNote) {
+                penaltyEl.textContent = s.uiText.penaltyNote;
+            }
+            const dynamicEl = document.getElementById(`${child}DynamicRule`);
+            if (dynamicEl && dynamicEl.textContent !== s.uiText.dynamicRule) {
+                dynamicEl.textContent = s.uiText.dynamicRule;
+            }
+
+            updateRealtimeStats(child);
+        }
+
+        function updateRealtimeStats(child) {
+            const s = state[child];
+            const container = document.getElementById(`${child}RealtimeStats`);
+            if (!container) return;
+
+            const day = s.currentDay;
+            const req = getRequirements(child, day);
+            const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const useWeekend = isWeekendStandard(day, globalHolidayMode);
+            const confiscated = isPhoneConfiscated(child);
+
+            let html = `<div class="rt-row"><span class="rt-label">📅 當前設定</span><span class="rt-value">${dayNames[day]} ${useWeekend ? (globalHolidayMode ? '(假期模式)' : '(週末)') : '(平日)'}</span></div>`;
+            s.tasks.forEach(task => {
+                const taskId = task.id;
+                const isPhoneTask = (taskId === 'phone');
+                const isConfiscated = isPhoneTask && confiscated;
+                const done = !!s.mainChecked[taskId];
+                const need = req[taskId] || 1;
+                const count = s.counters[taskId] || 0;
+                let statusText, cls;
+                if (isConfiscated) {
+                    statusText = '🚫 已沒收';
+                    cls = 'bad';
+                } else {
+                    statusText = done ? '✅ 完成' : (count >= need ? '🔄 待確認' : '⏳ 未完成');
+                    cls = done ? 'good' : (count >= need ? '' : 'bad');
+                }
+                html += `<div class="rt-row">
+                    <span class="rt-label">${task.name}</span>
+                    <span class="rt-value ${cls}">${count}/${need} ${statusText}</span>
+                </div>`;
+            });
+
+            const hwDone = s.mainChecked['homework'] || false;
+            const choresDone = s.mainChecked['chores'] || false;
+            const revisionDone = s.mainChecked['revision'] || false;
+            let canUsePhone = false;
+            if (confiscated) {
+                canUsePhone = false;
+            } else if (child === 'doudou') {
+                canUsePhone = useWeekend ? (hwDone && revisionDone) : (hwDone && choresDone);
+            } else {
+                canUsePhone = useWeekend ? (hwDone && revisionDone) : (hwDone && choresDone);
+            }
+            html += `<div class="rt-row" style="margin-top:5px;border-top:1px solid #e0d0c0;padding-top:5px;">
+                <span class="rt-label">📱 手機使用</span>
+                <span class="rt-value ${canUsePhone ? 'good' : 'bad'}">${confiscated ? '🚫 已沒收' : (canUsePhone ? '✅ 可用' : '❌ 不可用')}</span>
+            </div>`;
+
+            container.innerHTML = html;
+        }
+
+        // ---------- 自動設定主 checkbox ----------
+        function autoSetMainForTask(child, taskId) {
+            const s = state[child];
+            const req = getRequirements(child, s.currentDay)[taskId] || 1;
+            if (req > 0) {
+                s.mainChecked[taskId] = (s.counters[taskId] || 0) >= req;
+            }
+            updateChildUI(child);
+        }
+
+        // ---------- 事件綁定 ----------
+        function bindTaskEvents(child) {
+            const container = document.getElementById(`${child}TasksContainer`);
+            if (!container) return;
+
+            container.querySelectorAll('.main-checkbox').forEach(cb => {
+                cb.removeEventListener('change', handleMainCheckChange);
+                cb.addEventListener('change', handleMainCheckChange);
+            });
+            container.querySelectorAll('.counter-btn').forEach(btn => {
+                btn.removeEventListener('click', handleCounterClick);
+                btn.addEventListener('click', handleCounterClick);
+            });
+            container.querySelectorAll('.detail-checkbox').forEach(cb => {
+                cb.removeEventListener('change', handleDetailCheckChange);
+                cb.addEventListener('change', handleDetailCheckChange);
+            });
+            container.querySelectorAll('.delete-detail-btn').forEach(btn => {
+                btn.removeEventListener('click', handleDeleteDetail);
+                btn.addEventListener('click', handleDeleteDetail);
+            });
+            container.querySelectorAll('.add-detail-btn').forEach(btn => {
+                btn.removeEventListener('click', handleAddDetail);
+                btn.addEventListener('click', handleAddDetail);
+            });
+            container.querySelectorAll('.delete-task-btn').forEach(btn => {
+                btn.removeEventListener('click', handleDeleteTask);
+                btn.addEventListener('click', handleDeleteTask);
+            });
+            container.querySelectorAll('.add-task-btn').forEach(btn => {
+                btn.removeEventListener('click', handleAddTask);
+                btn.addEventListener('click', handleAddTask);
+            });
+            container.querySelectorAll('.task-title-text').forEach(el => {
+                el.removeEventListener('blur', handleTaskNameBlur);
+                el.addEventListener('blur', handleTaskNameBlur);
+            });
+            container.querySelectorAll('.detail-text').forEach(el => {
+                el.removeEventListener('blur', handleDetailTextBlur);
+                el.addEventListener('blur', handleDetailTextBlur);
+            });
+        }
+
+        function handleMainCheckChange(e) {
+            const cb = e.target;
+            const child = cb.dataset.child;
+            const taskId = cb.dataset.taskId;
+            state[child].mainChecked[taskId] = cb.checked;
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleCounterClick(e) {
+            const btn = e.currentTarget;
+            const child = btn.dataset.child;
+            const taskId = btn.dataset.task;
+            const action = btn.dataset.action;
+            if (!child || !taskId) return;
+
+            const s = state[child];
+            if (action === 'inc') {
+                s.counters[taskId] = (s.counters[taskId] || 0) + 1;
+            } else if (action === 'dec') {
+                s.counters[taskId] = Math.max(0, (s.counters[taskId] || 0) - 1);
+            }
+            autoSetMainForTask(child, taskId);
+            pushToStorage();
+        }
+
+        function handleDetailCheckChange(e) {
+            const cb = e.target;
+            const child = cb.dataset.child;
+            const taskId = cb.dataset.taskId;
+            const detailId = cb.dataset.detailId;
+
+            if (!state[child].detailChecked[taskId]) state[child].detailChecked[taskId] = {};
+            state[child].detailChecked[taskId][detailId] = cb.checked;
+
+            if (taskId === 'phone' && detailId === CONFISCATED_DETAIL_ID && cb.checked) {
+                const s = state[child];
+                const phoneTask = s.tasks.find(t => t.id === 'phone');
+                if (phoneTask) {
+                    phoneTask.details.forEach(d => {
+                        if (d.id !== CONFISCATED_DETAIL_ID) {
+                            s.detailChecked['phone'][d.id] = false;
+                        }
+                    });
+                    s.counters['phone'] = 0;
+                    s.mainChecked['phone'] = false;
+                }
+            }
+
+            recalcCountersFromDetails(child);
+
+            const s = state[child];
+            const req = getRequirements(child, s.currentDay)[taskId] || 1;
+            s.mainChecked[taskId] = (s.counters[taskId] || 0) >= req;
+
+            if (taskId === 'phone' && cb.checked && detailId === CONFISCATED_DETAIL_ID) {
+                s.mainChecked['phone'] = false;
+            }
+
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleDeleteDetail(e) {
+            const btn = e.currentTarget;
+            const child = btn.dataset.child;
+            const taskId = btn.dataset.taskId;
+            const detailId = btn.dataset.detailId;
+            const s = state[child];
+            const task = s.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            if (detailId === CONFISCATED_DETAIL_ID) {
+                alert('「有被沒收手機」是前提細項，不能刪除');
+                return;
+            }
+            if (detailId === WEEKEND_REVISION_ID) {
+                alert('「每科讀20分鐘(僅週末)」是固定細項，不能刪除');
+                return;
+            }
+            task.details = task.details.filter(d => d.id !== detailId);
+            if (s.detailChecked[taskId]) delete s.detailChecked[taskId][detailId];
+            recalcCountersFromDetails(child);
+            const req = getRequirements(child, s.currentDay)[taskId] || 1;
+            s.mainChecked[taskId] = (s.counters[taskId] || 0) >= req;
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleAddDetail(e) {
+            const btn = e.currentTarget;
+            const child = btn.dataset.child;
+            const taskId = btn.dataset.taskId;
+            const s = state[child];
+            const task = s.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            const newId = 'd' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            task.details.push({ id: newId, text: '新細項' });
+            if (!s.detailChecked[taskId]) s.detailChecked[taskId] = {};
+            s.detailChecked[taskId][newId] = false;
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleDeleteTask(e) {
+            const btn = e.currentTarget;
+            const child = btn.dataset.child;
+            const taskId = btn.dataset.taskId;
+            const s = state[child];
+            if (s.tasks.length <= 1) {
+                alert('至少需要保留一個任務');
+                return;
+            }
+            if (!confirm(`確定要刪除任務「${s.tasks.find(t => t.id === taskId)?.name || taskId}」嗎？`)) return;
+            s.tasks = s.tasks.filter(t => t.id !== taskId);
+            delete s.counters[taskId];
+            delete s.mainChecked[taskId];
+            delete s.detailChecked[taskId];
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleAddTask(e) {
+            const btn = e.currentTarget;
+            const child = btn.dataset.child;
+            const s = state[child];
+            const newId = 'task' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const newTask = {
+                id: newId,
+                name: '✨ 新任務',
+                details: [
+                    { id: 'd1_' + newId, text: '細項一' },
+                    { id: 'd2_' + newId, text: '細項二' }
+                ]
+            };
+            s.tasks.push(newTask);
+            s.counters[newId] = 0;
+            s.mainChecked[newId] = false;
+            s.detailChecked[newId] = {};
+            newTask.details.forEach(d => { s.detailChecked[newId][d.id] = false; });
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function handleTaskNameBlur(e) {
+            const el = e.currentTarget;
+            const child = el.dataset.child;
+            const taskId = el.dataset.taskId;
+            const newName = el.textContent.trim() || '未命名任務';
+            const s = state[child];
+            const task = s.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.name = newName;
+                el.textContent = newName;
+                updateChildUI(child);
+                pushToStorage();
+            }
+        }
+
+        function handleDetailTextBlur(e) {
+            const el = e.currentTarget;
+            const child = el.dataset.child;
+            const taskId = el.dataset.taskId;
+            const detailId = el.dataset.detailId;
+            const newText = el.textContent.trim() || '未命名細項';
+            const s = state[child];
+            const task = s.tasks.find(t => t.id === taskId);
+            if (task) {
+                const detail = task.details.find(d => d.id === detailId);
+                if (detail) {
+                    detail.text = newText;
+                    el.textContent = newText;
+                    pushToStorage();
+                }
+            }
+        }
+
+        // 星期切換
+        function bindDaySelectors() {
+            ['doudou', 'lele'].forEach(child => {
+                const selector = document.getElementById(`${child}DaySelector`);
+                if (selector) {
+                    selector.querySelectorAll('button').forEach(btn => {
+                        btn.removeEventListener('click', handleDayClick);
+                        btn.addEventListener('click', handleDayClick);
+                    });
+                }
+            });
+        }
+
+        function handleDayClick(e) {
+            const btn = e.currentTarget;
+            const child = btn.closest('.child-card').classList.contains('doudou') ? 'doudou' : 'lele';
+            const day = parseInt(btn.dataset.day);
+            state[child].currentDay = day;
+
+            const s = state[child];
+            const req = getRequirements(child, day);
+            s.tasks.forEach(task => {
+                if (req[task.id] > 0) {
+                    s.mainChecked[task.id] = (s.counters[task.id] || 0) >= req[task.id];
+                }
+            });
+            if (isPhoneConfiscated(child)) {
+                s.mainChecked['phone'] = false;
+            }
+            recalcCountersFromDetails(child);
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        // 假期模式切換
+        function handleHolidayModeChange(e) {
+            globalHolidayMode = e.target.checked;
+            const statusEl = document.getElementById('holidayStatus');
+            if (statusEl) {
+                statusEl.textContent = globalHolidayMode ? '已開啟' : '關閉';
+                statusEl.className = globalHolidayMode ? 'holiday-status active' : 'holiday-status';
+            }
+
+            ['doudou', 'lele'].forEach(child => {
+                const s = state[child];
+                recalcCountersFromDetails(child);
+                const req = getRequirements(child, s.currentDay);
+                s.tasks.forEach(task => {
+                    if (req[task.id] > 0) {
+                        s.mainChecked[task.id] = (s.counters[task.id] || 0) >= req[task.id];
+                    }
+                });
+                if (isPhoneConfiscated(child)) {
+                    s.mainChecked['phone'] = false;
+                }
+                renderTasks(child);
+                updateChildUI(child);
+            });
+            pushToStorage();
+        }
+
+        // 根據日曆自動選擇星期幾
+        function autoSelectDayBasedOnCalendar() {
+            const todayDay = getTodayDay();
+            const todayStr = formatDate(new Date());
+            let changed = false;
+
+            ['doudou', 'lele'].forEach(child => {
+                const s = state[child];
+                if (s.lastAutoDate !== todayStr) {
+                    s.currentDay = todayDay;
+                    s.lastAutoDate = todayStr;
+                    changed = true;
+                    const req = getRequirements(child, todayDay);
+                    s.tasks.forEach(task => {
+                        if (req[task.id] > 0) {
+                            s.mainChecked[task.id] = (s.counters[task.id] || 0) >= req[task.id];
+                        }
+                    });
+                    if (isPhoneConfiscated(child)) {
+                        s.mainChecked['phone'] = false;
+                    }
+                    recalcCountersFromDetails(child);
+                }
+            });
+
+            if (changed) {
+                renderTasks('doudou');
+                renderTasks('lele');
+                updateChildUI('doudou');
+                updateChildUI('lele');
+                pushToStorage();
+            }
+        }
+
+        // 重置
+        function resetChild(child) {
+            const s = state[child];
+            s.tasks.forEach(task => {
+                s.counters[task.id] = 0;
+                s.mainChecked[task.id] = false;
+                if (s.detailChecked[task.id]) {
+                    Object.keys(s.detailChecked[task.id]).forEach(k => {
+                        s.detailChecked[task.id][k] = false;
+                    });
+                }
+            });
+            renderTasks(child);
+            updateChildUI(child);
+            pushToStorage();
+        }
+
+        function resetAll() {
+            ['doudou', 'lele'].forEach(child => {
+                state[child].currentDay = getTodayDay();
+                state[child].lastAutoDate = formatDate(new Date());
+                state[child].tasks.forEach(task => {
+                    state[child].counters[task.id] = 0;
+                    state[child].mainChecked[task.id] = false;
+                    if (state[child].detailChecked[task.id]) {
+                        Object.keys(state[child].detailChecked[task.id]).forEach(k => {
+                            state[child].detailChecked[task.id][k] = false;
+                        });
+                    }
+                });
+                renderTasks(child);
+                updateChildUI(child);
+            });
+            pushToStorage();
+        }
+
+        function bindResetButtons() {
+            document.querySelectorAll('.reset-child-btn').forEach(btn => {
+                btn.removeEventListener('click', handleResetChild);
+                btn.addEventListener('click', handleResetChild);
+            });
+            const globalBtn = document.getElementById('globalResetBtn');
+            if (globalBtn) {
+                globalBtn.removeEventListener('click', resetAll);
+                globalBtn.addEventListener('click', resetAll);
+            }
+            const clearBtn = document.getElementById('clearStatsBtn');
+            if (clearBtn) {
+                clearBtn.removeEventListener('click', clearStats);
+                clearBtn.addEventListener('click', clearStats);
+            }
+            const syncNowBtn = document.getElementById('syncNowBtn');
+            if (syncNowBtn) {
+                syncNowBtn.removeEventListener('click', syncAndRender);
+                syncNowBtn.addEventListener('click', syncAndRender);
+            }
+        }
+
+        function handleResetChild(e) {
+            const child = e.currentTarget.dataset.child;
+            if (child) resetChild(child);
+        }
+
+        function clearStats() {
+            if (confirm('確定要清除所有統計記錄嗎？（不會影響任務設定）')) {
+                historyData = { doudou: [], lele: [] };
+                saveHistory();
+                renderHistory();
+                pushToStorage();
+            }
+        }
+
+        // ---------- 歷史記錄 ----------
+        function renderHistory() {
+            ['doudou', 'lele'].forEach(child => {
+                const container = document.getElementById(`${child}History`);
+                if (!container) return;
+                const entries = historyData[child] || [];
+                if (entries.length === 0) {
+                    container.innerHTML = '<div class="empty-history">暫無記錄</div>';
+                    return;
+                }
+                const recent = entries.slice(-20).reverse();
+                container.innerHTML = recent.map(entry => {
+                    const dateStr = entry.date || '未知日期';
+                    const items = entry.items || {};
+                    const detailStr = Object.keys(items).map(k => {
+                        return items[k] ? `✅${k}` : `❌${k}`;
+                    }).join(' ');
+                    return `<div class="history-entry">
+                        <span class="history-date">${dateStr}</span>
+                        <span class="history-detail"><span>${detailStr || '無資料'}</span></span>
+                    </div>`;
+                }).join('');
+            });
+        }
+
+        function saveHistory() {
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(historyData));
+            } catch (e) {}
+        }
+
+        function generateDailyRecord(child) {
+            const s = state[child];
+            const now = new Date();
+            const dateStr = formatDate(now);
+            const items = {};
+            s.tasks.forEach(task => {
+                items[task.name.replace(/[^\w\u4e00-\u9fa5]/g, '')] = s.mainChecked[task.id] ? true : false;
+            });
+            const confiscated = isPhoneConfiscated(child);
+            if (confiscated) items['手機沒收'] = true;
+            if (globalHolidayMode) items['假期模式'] = true;
+            return {
+                date: dateStr,
+                timestamp: now.getTime(),
+                items: items,
+                counters: { ...s.counters },
+                day: s.currentDay
+            };
+        }
+
+        function saveDailyStats() {
+            ['doudou', 'lele'].forEach(child => {
+                const record = generateDailyRecord(child);
+                const list = historyData[child] || [];
+                if (list.length > 0 && list[list.length - 1].date === record.date) {
+                    list[list.length - 1] = record;
+                } else {
+                    list.push(record);
+                }
+                if (list.length > 90) {
+                    historyData[child] = list.slice(-90);
+                } else {
+                    historyData[child] = list;
+                }
+            });
+            saveHistory();
+            renderHistory();
+            pushToStorage();
+        }
+
+        function scheduleMidnightSave() {
+            const now = new Date();
+            const nextMidnight = new Date(now);
+            nextMidnight.setHours(24, 0, 0, 0);
+            const delay = nextMidnight - now;
+            setTimeout(() => {
+                saveDailyStats();
+                setInterval(saveDailyStats, 24 * 60 * 60 * 1000);
+            }, delay);
+        }
+
+        // ---------- 可編輯文字 ----------
+        function bindEditableText() {
+            ['doudou', 'lele'].forEach(child => {
+                const penaltyEl = document.getElementById(`${child}PenaltyNote`);
+                if (penaltyEl) {
+                    penaltyEl.removeEventListener('blur', handlePenaltyBlur);
+                    penaltyEl.addEventListener('blur', handlePenaltyBlur);
+                }
+                const dynamicEl = document.getElementById(`${child}DynamicRule`);
+                if (dynamicEl) {
+                    dynamicEl.removeEventListener('blur', handleDynamicBlur);
+                    dynamicEl.addEventListener('blur', handleDynamicBlur);
+                }
+            });
+        }
+
+        function handlePenaltyBlur(e) {
+            const el = e.currentTarget;
+            const child = el.id.startsWith('doudou') ? 'doudou' : 'lele';
+            const text = el.textContent.trim();
+            state[child].uiText.penaltyNote = text || DEFAULT_UI_TEXT[child].penaltyNote;
+            pushToStorage();
+        }
+
+        function handleDynamicBlur(e) {
+            const el = e.currentTarget;
+            const child = el.id.startsWith('doudou') ? 'doudou' : 'lele';
+            const text = el.textContent.trim();
+            state[child].uiText.dynamicRule = text || DEFAULT_UI_TEXT[child].dynamicRule;
+            pushToStorage();
+        }
+
+        function bindHolidayMode() {
+            const checkbox = document.getElementById('holidayModeCheckbox');
+            if (checkbox) {
+                checkbox.checked = globalHolidayMode;
+                checkbox.removeEventListener('change', handleHolidayModeChange);
+                checkbox.addEventListener('change', handleHolidayModeChange);
+            }
+            const statusEl = document.getElementById('holidayStatus');
+            if (statusEl) {
+                statusEl.textContent = globalHolidayMode ? '已開啟' : '關閉';
+                statusEl.className = globalHolidayMode ? 'holiday-status active' : 'holiday-status';
+            }
+        }
+
+        // ---------- 初始化 ----------
+        function init() {
+            loadInitial();
+
+            autoSelectDayBasedOnCalendar();
+
+            ['doudou', 'lele'].forEach(child => {
+                recalcCountersFromDetails(child);
+                const s = state[child];
+                const req = getRequirements(child, s.currentDay);
+                s.tasks.forEach(task => {
+                    if (req[task.id] > 0) {
+                        s.mainChecked[task.id] = (s.counters[task.id] || 0) >= req[task.id];
+                    }
+                });
+                if (isPhoneConfiscated(child)) {
+                    s.mainChecked['phone'] = false;
+                }
+            });
+
+            renderTasks('doudou');
+            renderTasks('lele');
+
+            updateChildUI('doudou');
+            updateChildUI('lele');
+
+            bindDaySelectors();
+            bindResetButtons();
+            bindEditableText();
+            bindHolidayMode();
+
+            renderHistory();
+            scheduleMidnightSave();
+
+            // 啟動同步定時器
+            startSyncTimer();
+
+            // 每分鐘檢查日期切換
+            setInterval(() => {
+                autoSelectDayBasedOnCalendar();
+            }, 60000);
+
+            // 頁面關閉前儲存（確保本機資料完整）
+            window.addEventListener('beforeunload', function() {
+                pushToStorage();
+            });
+
+            // 頁面獲得焦點時主動同步
+            window.addEventListener('focus', function() {
+                syncAndRender();
+            });
+
+            updateSyncStatus('online', '最後更新：' + new Date(lastLocalTimestamp).toLocaleTimeString());
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+</script>
+</body>
+</html>
